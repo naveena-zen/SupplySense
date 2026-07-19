@@ -8,30 +8,30 @@ SupplySense is a real-time, AI-driven supply chain risk monitoring and reactive 
 
 ```mermaid
 graph TD
-    subgraph Client Layer (React Dashboard)
-        WebUI[React Vite App]
-        Chat[Reactive Chat Input]
-        Log[Agent Activity Log Panel]
+    subgraph "Client Layer (React Dashboard)"
+        WebUI["React Vite App"]
+        Chat["Reactive Chat Input"]
+        Log["Agent Activity Log Panel"]
     end
 
-    subgraph Service Layer (FastAPI API)
-        API[FastAPI Server]
-        AuthAgent[Autonomous Monitor Agent]
-        ReactAgent[Reactive Tool Agent]
-        Scheduler[APScheduler Trigger]
+    subgraph "Service Layer (FastAPI API)"
+        API["FastAPI Server"]
+        AuthAgent["Autonomous Monitor Agent"]
+        ReactAgent["Reactive Tool Agent"]
+        Scheduler["APScheduler Trigger"]
     end
 
-    subgraph Reasoning Core
-        Risk[risk.py Pure Functions]
+    subgraph "Reasoning Core"
+        Risk["risk.py Pure Functions"]
     end
 
-    subgraph Data & Storage Layer
-        DB[(PostgreSQL Database)]
-        Alembic[Alembic Migrations]
+    subgraph "Data & Storage Layer"
+        DB[("PostgreSQL Database")]
+        Alembic["Alembic Migrations"]
     end
 
-    subgraph External LLM APIs
-        LLM[LLM API: Claude/Groq Llama]
+    subgraph "External LLM APIs"
+        LLM["LLM API: Claude/Groq Llama"]
     end
 
     %% Routing
@@ -45,7 +45,7 @@ graph TD
     AuthAgent -->|3. Structured Prompt| LLM
     AuthAgent -->|4. Persist JSON Decisions| DB
     
-    ReactAgent -->|1. Multi-turn loop <5| LLM
+    ReactAgent -->|1. Multi-turn loop| LLM
     ReactAgent -->|2. Execute Database Tools| DB
     ReactAgent -->|3. Synthesize & Respond| WebUI
     
@@ -102,24 +102,24 @@ The Reactive Agent answers natural-language operations questions through a custo
 ```mermaid
 sequenceDiagram
     participant UI as Chat Panel
-    participant Loop as Hand-rolled Loop
+    participant AgentLoop as Hand-rolled Loop
     participant LLM as Claude / Groq
     participant Tools as backend/tools.py
     
-    UI->>Loop: User Question
-    loop Turn < 5 (Max)
-        Loop->>LLM: Prompt + Tool Schemas + History
+    UI->>AgentLoop: User Question
+    loop "Up to 5 turns"
+        AgentLoop->>LLM: Prompt + Tool Schemas + History
         alt LLM requests Tool Call
-            LLM-->>Loop: Tool Call Name & Args
-            Loop->>Tools: Execute Python Handler (Postgres)
-            Tools-->>Loop: JSON Query Result
-            Loop->>Loop: Append Result to History
+            LLM-->>AgentLoop: Tool Call Name & Args
+            AgentLoop->>Tools: Execute Python Handler (Postgres)
+            Tools-->>AgentLoop: JSON Query Result
+            AgentLoop->>AgentLoop: Append Result to History
         else LLM returns Text
-            LLM-->>Loop: Terminal Answer Text
-            Loop->>Loop: Break Loop
+            LLM-->>AgentLoop: Terminal Answer Text
+            AgentLoop->>AgentLoop: Break Loop
         end
     end
-    Loop-->>UI: Final Answer + Complete Step Trace
+    AgentLoop-->>UI: Final Answer + Complete Step Trace
 ```
 
 ---

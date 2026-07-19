@@ -172,6 +172,14 @@ async def run_autonomous_monitor(db: Session) -> str:
 
         # Parse decisions
         decisions_json = json.loads(cleaned_response)
+        
+        # Robust fallback: if LLM wrapped the list in a dict (e.g. {"decisions": [...]}), extract the list
+        if isinstance(decisions_json, dict):
+            for val in decisions_json.values():
+                if isinstance(val, list):
+                    decisions_json = val
+                    break
+
         if not isinstance(decisions_json, list):
             raise ValueError("LLM response is not a JSON list of decisions.")
 

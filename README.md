@@ -96,4 +96,46 @@ $env:PYTHONPATH="."; python -m pytest backend/tests
 ---
 
 ## 🗺️ System Design
-For visual Mermaid flowcharts and structural diagrams of the two agent loops, please check the [ARCHITECTURE.md](ARCHITECTURE.md) document in the workspace root.
+Below is the system architecture diagram. For more details on the agent loops, check the [ARCHITECTURE.md](ARCHITECTURE.md) document.
+
+```mermaid
+flowchart TD
+    subgraph "Client Layer"
+        WebClient["React Vite Client Dashboard"]
+        ChatWidget["Reactive Agent Chat Widget"]
+    end
+    
+    subgraph "FastAPI Service Layer"
+        APIServer["FastAPI Server"]
+        APScheduler["APScheduler Background Scheduler"]
+        MonitorAgent["Autonomous Monitor Agent"]
+        ReactiveAgent["Reactive Tool Agent"]
+    end
+
+    subgraph "Database Layer"
+        Postgres["PostgreSQL Database Store"]
+    end
+    
+    subgraph "LLM Layer"
+        LLM["LLM Service (Claude / Groq)"]
+    end
+
+    WebClient -->|Fetch stats| APIServer
+    APScheduler -->|Trigger| MonitorAgent
+    MonitorAgent -->|Query State| Postgres
+    MonitorAgent -->|Send State| LLM
+    LLM -->|Save Decisions| MonitorAgent
+    MonitorAgent -->|Persist Runs| Postgres
+    
+    ChatWidget -->|Ask question| APIServer
+    APIServer -->|Initiate| ReactiveAgent
+    
+    subgraph "AgentLoop (Max 5 Turns)"
+        ReactiveAgent -->|Ask tool choice| LLM
+        LLM -->|Execute query| ReactiveAgent
+        ReactiveAgent -->|SQL Select| Postgres
+        Postgres -->|Result data| ReactiveAgent
+    end
+    
+    ReactiveAgent -->|Final Markdown answer| WebClient
+```
