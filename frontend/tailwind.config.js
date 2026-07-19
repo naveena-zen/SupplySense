@@ -7,10 +7,10 @@ export default {
   theme: {
     extend: {
       colors: {
-        darkBg: '#090D16',
-        cardBg: '#111827',
-        borderDark: '#1F2937',
-        neonBlue: '#3B82F6',
+        darkBg: '#0D0D0F',
+        cardBg: '#1A1A1D',
+        borderDark: '#2A2A2E',
+        accentOrange: '#FF5A1F',
         neonEmerald: '#10B981',
         neonRose: '#F43F5E',
         neonAmber: '#F59E0B',

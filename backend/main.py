@@ -22,10 +22,25 @@ logger = logging.getLogger("backend.main")
 # Initialize FastAPI app
 app = FastAPI(title="SupplySense API", description="AI Supply Chain Risk & Inventory Intelligence API")
 
+import os
+
 # Add CORS middleware for frontend communication
+frontend_url = os.getenv("FRONTEND_URL")
+origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+if frontend_url:
+    if "," in frontend_url:
+        origins.extend([o.strip() for o in frontend_url.split(",")])
+    else:
+        origins.append(frontend_url)
+else:
+    origins.append("*")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -50,13 +65,10 @@ def run_background_monitor():
 
 @app.on_event("startup")
 def startup_event():
-    # Start the scheduler
-    scheduler.add_job(run_background_monitor, 'interval', minutes=10)
+    # Start the scheduler — run every 60 min to avoid exhausting free-tier TPM quota
+    scheduler.add_job(run_background_monitor, 'interval', minutes=60)
     scheduler.start()
-    logger.info("APScheduler background scheduler started.")
-    
-    # Run a monitor cycle immediately in a background thread to have initial data
-    threading.Thread(target=run_background_monitor, daemon=True).start()
+    logger.info("APScheduler background scheduler started (60-min interval).")
 
 @app.on_event("shutdown")
 def shutdown_event():
@@ -71,6 +83,11 @@ class SuggestAlternateRequest(BaseModel):
     sku_id_or_name: str
 
 # API Routes
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
+
+
 @app.get("/dashboard-summary")
 def get_dashboard_summary(db: Session = Depends(get_db)):
     """Fetch KPI numbers for the dashboard cards."""
@@ -253,21 +270,31 @@ async def generate_exec_summary(db: Session = Depends(get_db)):
     """Generate a high-level executive text summary of the current supply chain state."""
     try:
         state = build_snapshot_context(db)
-        
-        system_prompt = """You are an expert AI Supply Chain Operations Executive.
-Your task is to review the compact snapshot of the supply chain state and generate a concise, professional executive summary (2-3 paragraphs max).
-Synthesize the biggest current vulnerabilities, active shipping delays, and critical supply risks.
-Include concrete figures (like specific SKU stock levels, number of delayed shipments, and supplier risk scores).
-Maintain an action-oriented, professional corporate tone. Do not use markdown headers, list only the core takeaways in neat paragraphs or bullet points.
-"""
-        user_prompt = f"Here is the current supply chain state:\n\n{json.dumps(state)}"
-        
+
+        # Trim to top 5 highest-risk SKUs and top 5 shipments to stay under free-tier TPM limits
+        skus_sorted = sorted(state.get("skus", []), key=lambda x: x.get("days_left") or 999)[:5]
+        ships_sorted = state.get("active_shipments", [])[:5]
+        compact_state = {
+            "warehouses": state.get("warehouses", []),
+            "suppliers": state.get("suppliers", [])[:8],
+            "skus": skus_sorted,
+            "active_shipments": ships_sorted,
+        }
+
+        system_prompt = (
+            "You are an AI Supply Chain Executive. "
+            "Review this supply chain snapshot and write a concise 2-paragraph executive summary. "
+            "Highlight the top risks, delayed shipments, and critical stockout SKUs with real figures. "
+            "Be direct and professional. No markdown headers."
+        )
+        user_prompt = f"Supply chain state:\n{json.dumps(compact_state)}"
+
         summary_text = await call_llm(
             system_prompt=system_prompt,
             user_prompt=user_prompt,
             json_mode=False
         )
-        
+
         return {"summary": summary_text}
     except Exception as e:
         logger.exception("Error generating executive summary")

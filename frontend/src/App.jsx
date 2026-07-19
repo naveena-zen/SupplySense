@@ -30,7 +30,7 @@ import {
   Legend 
 } from 'recharts';
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const queries = [
   "Which suppliers are most likely to miss deliveries next week?",
@@ -216,7 +216,7 @@ export default function App() {
     setChatInput('');
     setChatHistory(prev => [...prev, { role: 'user', text: userText, steps: [] }]);
     setChatLoading(true);
-
+ 
     try {
       const res = await fetch(`${API_BASE}/agent/ask`, {
         method: 'POST',
@@ -296,13 +296,12 @@ export default function App() {
       {/* ── HEADER ── */}
       <header className="border-b border-borderDark bg-cardBg/30 backdrop-blur px-6 py-4 flex items-center justify-between sticky top-0 z-40">
         <div className="flex items-center space-x-3">
-          <div className="p-2.5 bg-neonBlue/10 text-neonBlue rounded-xl border border-neonBlue/20 shadow-[0_0_15px_rgba(59,130,246,0.1)]">
-            <Activity className="w-6 h-6 animate-pulse" />
+          <div className="p-2.5 bg-accentOrange/10 text-accentOrange rounded-xl border border-accentOrange/20 shadow-[0_0_15px_rgba(255,90,31,0.1)]">
+            <Truck className="w-6 h-6 animate-pulse" />
           </div>
           <div>
             <h1 className="text-xl font-bold tracking-tight text-white flex items-center space-x-2">
               <span>SupplySense</span>
-              <span className="text-xs bg-neonBlue/10 text-neonBlue px-2 py-0.5 rounded-full border border-neonBlue/20 font-medium">HACKATHON BUILD</span>
             </h1>
             <p className="text-xs text-gray-400">AI Supply Chain Risk & Inventory Intelligence</p>
           </div>
@@ -312,7 +311,7 @@ export default function App() {
           <button 
             onClick={triggerMonitorScan} 
             disabled={triggeringMonitor}
-            className="flex items-center space-x-2 bg-neonBlue/10 hover:bg-neonBlue/20 border border-neonBlue/30 hover:border-neonBlue/50 text-neonBlue hover:text-white px-4 py-2 rounded-xl text-sm font-medium transition duration-200 disabled:opacity-50"
+            className="flex items-center space-x-2 bg-accentOrange/10 hover:bg-accentOrange/20 border border-accentOrange/30 hover:border-accentOrange/50 text-accentOrange hover:text-white px-4 py-2 rounded-xl text-sm font-medium transition duration-200 disabled:opacity-50"
           >
             <Play className={`w-4 h-4 ${triggeringMonitor ? 'animate-spin' : ''}`} />
             <span>{triggeringMonitor ? 'Analyzing Snapshot...' : 'Manual Agent Scan'}</span>
@@ -332,64 +331,66 @@ export default function App() {
         
         {/* ── KPI STATS CARDS ── */}
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-cardBg border border-borderDark rounded-2xl p-5 hover:border-gray-700 transition">
+          <div className="bg-cardBg border border-borderDark rounded-2xl p-5 hover:border-gray-700/60 transition shadow-none">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium text-gray-400">At-Risk Products</span>
-              <div className="p-2 bg-neonRose/10 text-neonRose rounded-lg border border-neonRose/20">
+              <span className="text-[10px] uppercase font-bold tracking-wider text-gray-500 block">At-Risk Products</span>
+              <div className="p-2 bg-accentOrange/10 text-accentOrange rounded-lg border border-accentOrange/20">
                 <ShieldAlert className="w-5 h-5" />
               </div>
             </div>
             <div className="flex items-baseline space-x-2">
-              <span className="text-3xl font-bold text-white">{stats.at_risk_skus}</span>
-              <span className="text-xs text-gray-500">/ {stats.total_skus} total SKUs</span>
+              <span className="text-3xl font-extrabold text-accentOrange">{stats.at_risk_skus}</span>
+              <span className="text-xs text-gray-400">/ {stats.total_skus} total SKUs</span>
             </div>
           </div>
 
-          <div className="bg-cardBg border border-borderDark rounded-2xl p-5 hover:border-gray-700 transition">
+          <div className="bg-cardBg border border-borderDark rounded-2xl p-5 hover:border-gray-700/60 transition shadow-none">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium text-gray-400">Delayed Shipments</span>
-              <div className="p-2 bg-neonAmber/10 text-neonAmber rounded-lg border border-neonAmber/20">
+              <span className="text-[10px] uppercase font-bold tracking-wider text-gray-500 block">Delayed Shipments</span>
+              <div className="p-2 bg-accentOrange/10 text-accentOrange rounded-lg border border-accentOrange/20">
                 <Truck className="w-5 h-5" />
               </div>
             </div>
             <div className="flex items-baseline space-x-2">
-              <span className="text-3xl font-bold text-white">{stats.delayed_shipments}</span>
-              <span className="text-xs text-gray-400 font-medium text-neonRose">Active Delay Risk</span>
+              <span className="text-3xl font-extrabold text-accentOrange">{stats.delayed_shipments}</span>
+              <span className="text-xs text-gray-400 font-medium">Active Delay Risk</span>
             </div>
           </div>
 
-          <div className="bg-cardBg border border-borderDark rounded-2xl p-5 hover:border-gray-700 transition">
+          <div className="bg-cardBg border border-borderDark rounded-2xl p-5 hover:border-gray-700/60 transition shadow-none">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium text-gray-400">Supply Partners</span>
-              <div className="p-2 bg-neonEmerald/10 text-neonEmerald rounded-lg border border-neonEmerald/20">
+              <span className="text-[10px] uppercase font-bold tracking-wider text-gray-500 block">Supply Partners</span>
+              <div className="p-2 bg-gray-800 text-gray-400 rounded-lg border border-gray-700">
                 <Users className="w-5 h-5" />
               </div>
             </div>
             <div className="flex items-baseline space-x-2">
-              <span className="text-3xl font-bold text-white">{stats.total_suppliers}</span>
-              <span className="text-xs text-gray-500">Persisted Profiles</span>
+              <span className="text-3xl font-extrabold text-white">{stats.total_suppliers}</span>
+              <span className="text-xs text-gray-400">Persisted Profiles</span>
             </div>
           </div>
 
-          <div className="bg-cardBg border border-borderDark rounded-2xl p-5 hover:border-gray-700 transition">
+          <div className="bg-cardBg border border-borderDark rounded-2xl p-5 hover:border-gray-700/60 transition shadow-none">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium text-gray-400">Monitor Agent Run Status</span>
+              <span className="text-[10px] uppercase font-bold tracking-wider text-gray-500 block">Monitor Agent Run Status</span>
               <div className={`p-2 rounded-lg border ${
                 stats.latest_run_status === 'success' 
                   ? 'bg-neonEmerald/10 text-neonEmerald border-neonEmerald/20' 
                   : stats.latest_run_status === 'failed' 
                     ? 'bg-neonRose/10 text-neonRose border-neonRose/20' 
-                    : 'bg-neonBlue/10 text-neonBlue border-neonBlue/20'
+                    : 'bg-accentOrange/10 text-accentOrange border-accentOrange/20'
               }`}>
                 <Activity className="w-5 h-5" />
               </div>
             </div>
             <div>
-              <div className="flex items-center space-x-2">
-                <span className="text-xl font-bold text-white uppercase tracking-wider text-sm">{stats.latest_run_status}</span>
-                <span className="w-2.5 h-2.5 rounded-full bg-neonEmerald animate-ping"></span>
+              <div className="flex items-center space-x-2 mb-1">
+                <span className="text-base font-extrabold text-white uppercase tracking-wider">{stats.latest_run_status}</span>
+                {stats.latest_run_status === 'running' && (
+                  <span className="w-2.5 h-2.5 rounded-full bg-accentOrange animate-ping"></span>
+                )}
               </div>
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-gray-400 block">
                 Last checked: {stats.latest_run_time ? new Date(stats.latest_run_time).toLocaleTimeString() : 'N/A'}
               </span>
             </div>
@@ -397,38 +398,38 @@ export default function App() {
         </section>
 
         {/* ── NAVIGATION TABS ── */}
-        <nav className="flex space-x-1 border-b border-borderDark p-1 bg-cardBg/50 rounded-xl max-w-max">
+        <nav className="flex space-x-1 border border-borderDark p-1 bg-cardBg/50 rounded-xl max-w-max">
           <button 
             onClick={() => setActiveTab('monitor')}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition duration-150 ${activeTab === 'monitor' ? 'bg-neonBlue text-white shadow' : 'text-gray-400 hover:text-white hover:bg-gray-800/40'}`}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition duration-150 ${activeTab === 'monitor' ? 'bg-accentOrange text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-gray-800/40'}`}
           >
             <Activity className="w-4 h-4" />
             <span>Risk Monitor Log</span>
           </button>
           <button 
             onClick={() => setActiveTab('inventory')}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition duration-150 ${activeTab === 'inventory' ? 'bg-neonBlue text-white shadow' : 'text-gray-400 hover:text-white hover:bg-gray-800/40'}`}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition duration-150 ${activeTab === 'inventory' ? 'bg-accentOrange text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-gray-800/40'}`}
           >
             <Database className="w-4 h-4" />
             <span>Stock Analysis</span>
           </button>
           <button 
             onClick={() => setActiveTab('suppliers')}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition duration-150 ${activeTab === 'suppliers' ? 'bg-neonBlue text-white shadow' : 'text-gray-400 hover:text-white hover:bg-gray-800/40'}`}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition duration-150 ${activeTab === 'suppliers' ? 'bg-accentOrange text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-gray-800/40'}`}
           >
             <Users className="w-4 h-4" />
             <span>Supply Partners</span>
           </button>
           <button 
             onClick={() => setActiveTab('shipments')}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition duration-150 ${activeTab === 'shipments' ? 'bg-neonBlue text-white shadow' : 'text-gray-400 hover:text-white hover:bg-gray-800/40'}`}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition duration-150 ${activeTab === 'shipments' ? 'bg-accentOrange text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-gray-800/40'}`}
           >
             <Truck className="w-4 h-4" />
             <span>Logistics delays</span>
           </button>
           <button 
             onClick={() => setActiveTab('chat')}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition duration-150 ${activeTab === 'chat' ? 'bg-neonBlue text-white shadow' : 'text-gray-400 hover:text-white hover:bg-gray-800/40'}`}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition duration-150 ${activeTab === 'chat' ? 'bg-accentOrange text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-gray-800/40'}`}
           >
             <MessageSquare className="w-4 h-4" />
             <span>Reactive Chat Agent</span>
@@ -568,26 +569,26 @@ export default function App() {
               {/* Chart Section */}
               {chartData.length > 0 && (
                 <div className="bg-cardBg border border-borderDark rounded-2xl p-5">
-                  <h3 className="text-sm font-semibold text-white mb-4">Stock Levels vs safety Thresholds for At-Risk Items</h3>
+                  <h3 className="text-sm font-semibold text-white mb-4">Stock Levels vs Safety Thresholds for At-Risk Items</h3>
                   <div className="h-64 w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                         <defs>
                           <linearGradient id="colorStock" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.2}/>
-                            <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
+                            <stop offset="5%" stopColor="#FF5A1F" stopOpacity={0.2}/>
+                            <stop offset="95%" stopColor="#FF5A1F" stopOpacity={0}/>
                           </linearGradient>
                           <linearGradient id="colorSafety" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#F43F5E" stopOpacity={0.1}/>
                             <stop offset="95%" stopColor="#F43F5E" stopOpacity={0}/>
                           </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#2A2A2E" />
                         <XAxis dataKey="name" stroke="#9CA3AF" fontSize={11} />
                         <YAxis stroke="#9CA3AF" fontSize={11} />
-                        <Tooltip contentStyle={{ backgroundColor: '#111827', borderColor: '#1F2937' }} />
+                        <Tooltip contentStyle={{ backgroundColor: '#1A1A1D', borderColor: '#2A2A2E' }} />
                         <Legend fontSize={12} />
-                        <Area type="monotone" dataKey="Stock" stroke="#3B82F6" fillOpacity={1} fill="url(#colorStock)" />
+                        <Area type="monotone" dataKey="Stock" stroke="#FF5A1F" fillOpacity={1} fill="url(#colorStock)" />
                         <Area type="monotone" dataKey="Safety" stroke="#F43F5E" strokeDasharray="5 5" fillOpacity={1} fill="url(#colorSafety)" />
                         <Area type="monotone" dataKey="Reorder" stroke="#F59E0B" fillOpacity={0} />
                       </AreaChart>

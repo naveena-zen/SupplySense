@@ -8,6 +8,11 @@ from backend.risk import score_supplier_risk
 def seed_db():
     db = SessionLocal()
     try:
+        # Check if database is already seeded to avoid deleting or duplicating data on deployment
+        if db.query(Warehouse).count() > 0 or db.query(SKU).count() > 0:
+            print("Database already seeded. Skipping seed process.")
+            return
+
         print("Cleaning existing database records...")
         db.query(AgentDecision).delete()
         db.query(AgentRun).delete()

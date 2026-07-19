@@ -7,6 +7,13 @@ from backend.config import ANTHROPIC_API_KEY, GROQ_API_KEY, GROQ_MODEL
 
 logger = logging.getLogger(__name__)
 
+# Groq model fallback chain — primary is set in .env, fallback is smaller/cheaper
+GROQ_FALLBACK_MODELS = [
+    GROQ_MODEL,                       # primary (e.g. llama-3.3-70b-versatile)
+    "llama-3.1-8b-instant",            # smaller fallback
+    "qwen/qwen3.6-27b",               # secondary fallback (active as of July 2026)
+]
+
 # Initialize clients lazily or conditionally
 anthropic_client = None
 openai_client = None
@@ -31,6 +38,7 @@ async def call_llm(
     """
     Call the available LLM (Claude or Groq Llama) with a system prompt and user prompt.
     Returns the string completion.
+    Tries Groq fallback models if the primary model hits rate limits.
     """
     global anthropic_client, openai_client
 
@@ -68,26 +76,49 @@ async def call_llm(
                 )
 
     if openai_client:
-        try:
-            logger.info("Dispatching call to Groq Llama")
-            kwargs = {}
-            if json_mode:
-                kwargs["response_format"] = {"type": "json_object"}
-            
-            model = os.getenv("GROQ_MODEL", GROQ_MODEL)
-            response = await openai_client.chat.completions.create(
-                model=model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                max_tokens=4000,
-                temperature=0.1,
-                **kwargs
-            )
-            return response.choices[0].message.content.strip()
-        except Exception as e:
-            logger.error(f"Groq API call failed: {e}")
-            raise RuntimeError(f"All configured LLM providers failed. Last error: {e}")
+        last_error = None
+        groq_key = os.getenv("GROQ_API_KEY", GROQ_API_KEY)
+        primary_model = os.getenv("GROQ_MODEL", GROQ_MODEL)
+        
+        # Build model chain: primary first, then fallbacks (excluding primary if already in list)
+        models_to_try = [primary_model] + [m for m in GROQ_FALLBACK_MODELS if m != primary_model]
+        
+        for model in models_to_try:
+            try:
+                logger.info(f"Dispatching call to Groq model: {model}")
+                kwargs = {}
+                if json_mode:
+                    kwargs["response_format"] = {"type": "json_object"}
+                
+                response = await openai_client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    max_tokens=4000,
+                    temperature=0.1,
+                    **kwargs
+                )
+                return response.choices[0].message.content.strip()
+            except Exception as e:
+                error_str = str(e)
+                last_error = e
+                # Check for rate limit errors (429) — try next model
+                if "429" in error_str or "rate_limit" in error_str.lower() or "Rate limit" in error_str:
+                    logger.warning(f"Groq model '{model}' hit rate limit. Trying next fallback...")
+                    continue
+                # For decommissioned or bad-request errors, also skip to next fallback
+                if "400" in error_str or "model_decommissioned" in error_str or "413" in error_str:
+                    logger.warning(f"Groq model '{model}' unavailable ({e}). Trying next fallback...")
+                    continue
+                # For other unexpected errors, raise immediately
+                logger.error(f"Groq model '{model}' failed with unexpected error: {e}")
+                raise RuntimeError(f"All configured LLM providers failed. Last error: {e}")
+        
+        raise RuntimeError(
+            f"All Groq models exhausted their rate limits. "
+            f"Models tried: {models_to_try}. Please wait and retry. Last error: {last_error}"
+        )
 
     raise RuntimeError("No LLM provider keys (ANTHROPIC_API_KEY or GROQ_API_KEY) are configured in the environment.")

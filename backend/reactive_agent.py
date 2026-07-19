@@ -3,7 +3,7 @@ import logging
 from datetime import datetime
 from sqlalchemy.orm import Session
 from backend.models import AgentRun
-from backend.llm import anthropic_client, openai_client, call_llm
+from backend.llm import anthropic_client, openai_client, call_llm, GROQ_FALLBACK_MODELS
 from backend.config import GROQ_MODEL
 from backend import tools
 
@@ -117,7 +117,8 @@ def execute_tool_by_name(db: Session, name: str, args: dict) -> str:
         elif name == "recommend_warehouse":
             res = tools.recommend_warehouse(db, sku_id_or_name=args.get("sku_id_or_name"), quantity=args.get("quantity"))
         elif name == "get_top_risks":
-            res = tools.get_top_risks(db, limit=args.get("limit", 5))
+            limit_val = args.get("limit", 5)
+            res = tools.get_top_risks(db, limit=int(limit_val) if limit_val is not None else 5)
         elif name == "suggest_alternate_supplier":
             res = tools.suggest_alternate_supplier(db, sku_id_or_name=args.get("sku_id_or_name"))
         else:
@@ -245,17 +246,48 @@ async def run_reactive_agent(db: Session, question: str) -> dict:
                 logger.error(f"Claude agent turn failed: {e}")
                 raise e
         else:
-            # ── GROQ / OPENAI TURN ──
+            # ── GROQ / OPENAI TURN ── with fallback model chain on rate limits
+            # Build model priority list: primary first, then fallbacks
+            primary_model = GROQ_MODEL
+            models_to_try = [primary_model] + [m for m in GROQ_FALLBACK_MODELS if m != primary_model]
+            
+            last_error = None
+            response = None
+            for model_candidate in models_to_try:
+                try:
+                    response = await openai_client.chat.completions.create(
+                        model=model_candidate,
+                        messages=openai_messages,
+                        tools=openai_tools,
+                        tool_choice="auto",
+                        temperature=0.1,
+                        max_tokens=2000
+                    )
+                    break  # success, use this response
+                except Exception as e:
+                    error_str = str(e)
+                    last_error = e
+                    if "429" in error_str or "rate_limit" in error_str.lower() or "Rate limit" in error_str:
+                        logger.warning(f"Groq model '{model_candidate}' hit rate limit in reactive agent. Trying fallback...")
+                        continue
+                    # Non-rate-limit error: propagate immediately
+                    logger.error(f"Groq agent turn failed: {e}")
+                    run.status = "failed"
+                    run.completed_at = datetime.utcnow()
+                    run.summary = f"Question: {question}\nFailed with error: {str(e)}"
+                    db.commit()
+                    raise e
+            
+            if response is None:
+                err_msg = f"All Groq models hit rate limits. Models tried: {models_to_try}. Last error: {last_error}"
+                logger.error(err_msg)
+                run.status = "failed"
+                run.completed_at = datetime.utcnow()
+                run.summary = f"Question: {question}\nFailed: {err_msg}"
+                db.commit()
+                raise RuntimeError(err_msg)
+
             try:
-                response = await openai_client.chat.completions.create(
-                    model=GROQ_MODEL,
-                    messages=openai_messages,
-                    tools=openai_tools,
-                    tool_choice="auto",
-                    temperature=0.1,
-                    max_tokens=2000
-                )
-                
                 msg = response.choices[0].message
                 openai_messages.append(msg)
                 
@@ -292,8 +324,14 @@ async def run_reactive_agent(db: Session, question: str) -> dict:
                         "content": tool_result_str
                     })
 
+            except RuntimeError:
+                raise
             except Exception as e:
                 logger.error(f"Groq agent turn failed: {e}")
+                run.status = "failed"
+                run.completed_at = datetime.utcnow()
+                run.summary = f"Question: {question}\nFailed with error: {str(e)}"
+                db.commit()
                 raise e
 
     if not final_answer:

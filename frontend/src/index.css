@@ -6,7 +6,7 @@
 
 body {
   margin: 0;
-  background-color: #090D16;
+  background-color: #0D0D0F;
   color: #F3F4F6;
   font-family: 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -19,12 +19,12 @@ body {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #090D16;
+  background: #0D0D0F;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1F2937;
+  background: #2A2A2E;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #374151;
+  background: #3E3E44;
 }

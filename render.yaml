@@ -1,0 +1,42 @@
+services:
+  # Backend Web Service
+  - type: web
+    name: supplysense-backend
+    env: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: PYTHONPATH=.. alembic upgrade head && PYTHONPATH=.. python seed.py && PYTHONPATH=.. uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: supplysense-db
+          property: connectionString
+      - key: FRONTEND_URL
+        fromService:
+          type: web
+          name: supplysense-frontend
+          property: host
+      - key: GROQ_API_KEY
+        sync: false # Set manually in Render dashboard
+      - key: ANTHROPIC_API_KEY
+        sync: false # Set manually in Render dashboard
+
+  # Frontend Static Site
+  - type: web
+    name: supplysense-frontend
+    env: static
+    rootDir: frontend
+    plan: free
+    buildCommand: npm install && npm run build
+    publishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: supplysense-backend
+          property: host
+
+databases:
+  - name: supplysense-db
+    plan: free
